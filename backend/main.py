@@ -1,4 +1,5 @@
 import json
+import logging
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -6,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from extractor import extract_invoice_data
 
 app = FastAPI()
+logger = logging.getLogger("uvicorn.error")
 
 app.add_middleware(
     CORSMiddleware,
@@ -61,7 +63,14 @@ async def extract(file: UploadFile = File(..., description="Freight invoice PDF"
             status_code=502,
             detail="Extraction failed: model returned invalid JSON.",
         )
+    except RuntimeError as e:
+        logger.exception("Extraction runtime error")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Extraction failed: {e!s}",
+        ) from e
     except Exception as e:
+        logger.exception("Unexpected extraction error")
         raise HTTPException(
             status_code=500,
             detail=f"Extraction failed: {e!s}",
