@@ -26,9 +26,15 @@ export default function App() {
   ]
 
   const getConfidenceClass = (confidence) => {
-    if (confidence === "high") return "bg-emerald-100 text-emerald-800 border-emerald-200"
-    if (confidence === "medium") return "bg-amber-100 text-amber-800 border-amber-200"
-    return "bg-red-100 text-red-800 border-red-200"
+    if (confidence === "high") return "bg-[#fff3c7] text-[#7a5600] border-[#f6d770]"
+    if (confidence === "medium") return "bg-[#fff8de] text-[#89630c] border-[#f2df98]"
+    return "bg-[#fff1eb] text-[#9d4a2c] border-[#f2c9b9]"
+  }
+
+  const getConfidenceLabel = (confidence) => {
+    if (confidence === "high") return "High confidence - likely accurate"
+    if (confidence === "medium") return "Medium confidence - please verify"
+    return "Low confidence - review carefully"
   }
 
   const formatValue = (value) => {
@@ -86,10 +92,15 @@ export default function App() {
   const lineItems = Array.isArray(result?.line_items) ? result.line_items : []
 
   return (
-    <div className="min-h-screen bg-slate-50 px-4 py-8">
+    <div className="min-h-screen bg-[#f4f0e6] px-4 py-8 text-[#1f1f1f]">
       <div className="mx-auto w-full max-w-4xl">
-        <h1 className="text-3xl font-bold text-slate-900">Freight Invoice Extractor</h1>
-        <p className="mt-2 text-slate-600">
+        <div className="inline-flex rounded-md border border-[#d8d1bd] bg-[#efe9d7] px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[#5f5a4b]">
+          Freight AI
+        </div>
+        <h1 className="mt-4 text-4xl font-bold leading-tight text-[#1d1d1f] sm:text-5xl">
+          Freight invoice extraction, made clear
+        </h1>
+        <p className="mt-3 max-w-3xl text-lg text-[#5d5a52]">
           Drag and drop a freight invoice PDF, or click to upload and extract structured fields.
         </p>
 
@@ -108,23 +119,23 @@ export default function App() {
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
           disabled={loading}
-          className={`mt-6 flex w-full flex-col items-center justify-center rounded-xl border-2 border-dashed px-6 py-12 text-center transition ${
+          className={`mt-8 flex w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed px-6 py-12 text-center transition ${
             isDragActive
-              ? "border-blue-500 bg-blue-50"
-              : "border-slate-300 bg-white hover:border-blue-400 hover:bg-blue-50/40"
-          } ${loading ? "cursor-not-allowed opacity-70" : "cursor-pointer"}`}
+              ? "border-[#f4c430] bg-[#fff5d6]"
+              : "border-[#d6cfba] bg-[#f8f4e8] hover:border-[#e3bd3c] hover:bg-[#fff6da]"
+          } ${loading ? "cursor-not-allowed opacity-70" : "cursor-pointer shadow-sm hover:shadow"}`}
         >
-          <p className="text-lg font-semibold text-slate-800">
+          <p className="text-lg font-semibold text-[#262523]">
             {loading ? "Extracting invoice..." : "Drop PDF here or click to upload"}
           </p>
-          <p className="mt-2 text-sm text-slate-500">
+          <p className="mt-2 text-sm text-[#6b675d]">
             {fileName ? `Selected file: ${fileName}` : "Accepted format: PDF"}
           </p>
         </button>
 
         {loading && (
-          <div className="mt-4 flex items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-blue-700">
-            <div className="h-5 w-5 animate-spin rounded-full border-2 border-blue-300 border-t-blue-700" />
+          <div className="mt-4 flex items-center gap-3 rounded-lg border border-[#f2dc92] bg-[#fff6dc] px-4 py-3 text-[#7c5c0a]">
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#f2dc92] border-t-[#c69100]" />
             <span>Parsing the invoice and extracting fields. This can take a few seconds.</span>
           </div>
         )}
@@ -137,9 +148,9 @@ export default function App() {
       </div>
 
       {result && (
-        <div className="mx-auto mt-8 w-full max-w-4xl">
+        <div className="mx-auto mt-10 w-full max-w-4xl">
           {result.needs_review && (
-            <div className="mb-5 rounded-lg border border-yellow-300 bg-yellow-100 px-4 py-3 text-yellow-900">
+            <div className="mb-5 rounded-lg border border-[#e5c86e] bg-[#fff2c9] px-4 py-3 text-[#6f4f00]">
               <p className="font-semibold">Manual review recommended</p>
               <p className="text-sm">
                 One or more fields were extracted with low confidence. Please verify highlighted values.
@@ -147,67 +158,84 @@ export default function App() {
             </div>
           )}
 
-          <div className="overflow-hidden rounded-xl border border-slate-200 bg-white">
+          <div className="rounded-2xl border border-[#ddd4bc] bg-[#f8f4e8] p-4 shadow-sm sm:p-5">
+            <div className="mb-4 rounded-lg border border-[#eadfbf] bg-[#fff8e6] px-3 py-2 text-xs text-[#6d6756]">
+              Confidence guide: <span className="font-semibold text-[#7a5600]">High</span> is usually accurate,
+              <span className="font-semibold text-[#89630c]"> Medium</span> should be checked, and
+              <span className="font-semibold text-[#9d4a2c]"> Low</span> likely needs manual review.
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
             {fieldConfig.map(({ key, label }) => {
               const field = result[key]
+              const confidence = field?.confidence || "low"
               return (
                 <div
                   key={key}
-                  className="flex items-center justify-between gap-4 border-b border-slate-100 px-4 py-3 last:border-b-0"
+                  className="rounded-xl border border-[#e3dbc5] bg-[#fffdf7] p-4 shadow-sm"
                 >
-                  <span className="w-44 shrink-0 text-sm font-medium text-slate-700">{label}</span>
-                  <span className="flex-1 text-right text-sm text-slate-900">{formatValue(field?.value)}</span>
+                  <p className="text-xs font-medium uppercase tracking-wide text-[#7a7362]">{label}</p>
+                  <p className="mt-2 break-words text-base font-semibold text-[#20201d]">
+                    {formatValue(field?.value)}
+                  </p>
                   <span
-                    className={`rounded-full border px-2.5 py-1 text-xs font-semibold capitalize ${getConfidenceClass(
-                      field?.confidence
+                    className={`mt-3 inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${getConfidenceClass(
+                      confidence
                     )}`}
                   >
-                    {field?.confidence || "low"}
+                    {getConfidenceLabel(confidence)}
                   </span>
                 </div>
               )
             })}
+            </div>
           </div>
 
-          <div className="mt-6 rounded-xl border border-slate-200 bg-white p-4">
-            <h2 className="text-lg font-semibold text-slate-900">Line Items</h2>
+          <div className="mt-6 rounded-2xl border border-[#ddd4bc] bg-[#f8f4e8] p-4 shadow-sm">
+            <h2 className="text-lg font-semibold text-[#1f1f1f]">Line Items Breakdown</h2>
+            <p className="mt-1 text-sm text-[#605c52]">
+              Each card represents one billed charge from the invoice.
+            </p>
             {lineItems.length === 0 ? (
-              <p className="mt-2 text-sm text-slate-600">No line items detected.</p>
+              <p className="mt-2 text-sm text-[#605c52]">No line items detected.</p>
             ) : (
-              <div className="mt-3 overflow-x-auto">
-                <table className="min-w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-slate-200 text-left text-slate-600">
-                      <th className="px-2 py-2 font-medium">Description</th>
-                      <th className="px-2 py-2 font-medium">Quantity</th>
-                      <th className="px-2 py-2 font-medium">Unit Price</th>
-                      <th className="px-2 py-2 font-medium">Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {lineItems.map((item, index) => (
-                      <tr
-                        key={`${item.description || "item"}-${index}`}
-                        className="border-b border-slate-100 last:border-b-0"
-                      >
-                        <td className="px-2 py-2 text-slate-900">{formatValue(item.description)}</td>
-                        <td className="px-2 py-2 text-slate-900">{formatValue(item.quantity)}</td>
-                        <td className="px-2 py-2 text-slate-900">{formatValue(item.unit_price)}</td>
-                        <td className="px-2 py-2 text-slate-900">{formatValue(item.total)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                {lineItems.map((item, index) => (
+                  <article
+                    key={`${item.description || "item"}-${index}`}
+                    className="rounded-xl border border-[#e8dfc8] bg-[#fffdf7] p-4"
+                  >
+                    <p className="text-xs font-medium uppercase tracking-wide text-[#7a7362]">
+                      Item {index + 1}
+                    </p>
+                    <p className="mt-1 text-base font-semibold text-[#20201d]">
+                      {formatValue(item.description)}
+                    </p>
+                    <dl className="mt-3 space-y-2 text-sm">
+                      <div className="flex items-center justify-between gap-4">
+                        <dt className="text-[#746e60]">Quantity</dt>
+                        <dd className="font-medium text-[#20201d]">{formatValue(item.quantity)}</dd>
+                      </div>
+                      <div className="flex items-center justify-between gap-4">
+                        <dt className="text-[#746e60]">Unit Price</dt>
+                        <dd className="font-medium text-[#20201d]">{formatValue(item.unit_price)}</dd>
+                      </div>
+                      <div className="flex items-center justify-between gap-4 border-t border-[#ede5d1] pt-2">
+                        <dt className="text-[#746e60]">Total</dt>
+                        <dd className="font-semibold text-[#20201d]">{formatValue(item.total)}</dd>
+                      </div>
+                    </dl>
+                  </article>
+                ))}
               </div>
             )}
           </div>
 
-          <details className="mt-6 rounded-xl border border-slate-200 bg-white p-4">
-            <summary className="cursor-pointer text-sm font-medium text-slate-700">
+          <details className="mt-6 rounded-xl border border-[#ddd4bc] bg-[#f8f4e8] p-4">
+            <summary className="cursor-pointer text-sm font-medium text-[#5f5a4b]">
               View formatted extraction payload
             </summary>
-            <div className="mt-3 rounded-lg bg-slate-900 p-3">
-              <code className="block whitespace-pre-wrap break-all text-xs text-slate-100">
+            <div className="mt-3 rounded-lg bg-[#1f1f1f] p-3">
+              <code className="block whitespace-pre-wrap break-all text-xs text-[#f8f4e8]">
                 {JSON.stringify(result, null, 2)}
               </code>
             </div>
