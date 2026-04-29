@@ -34,23 +34,27 @@ except ModuleNotFoundError:
 
 app = FastAPI()
 logger = logging.getLogger("uvicorn.error")
-SAMPLE_PDF_DIR_CANDIDATES = [
-    BASE_DIR.parent / "pdfs",
-    Path.cwd() / "pdfs",
-]
 
 
-def get_sample_pdf_dirs() -> list[Path]:
-    existing = []
+def get_sample_pdf_search_dirs() -> list[Path]:
+    # Build resilient search paths so sample PDFs work regardless of launch cwd.
+    raw_candidates = [BASE_DIR.parent / "pdfs", Path.cwd() / "pdfs"]
+    raw_candidates.extend(parent / "pdfs" for parent in BASE_DIR.parents)
+    raw_candidates.extend(parent / "pdfs" for parent in Path.cwd().parents)
+
+    search_dirs = []
     seen = set()
-    for candidate in SAMPLE_PDF_DIR_CANDIDATES:
+    for candidate in raw_candidates:
         resolved = candidate.resolve()
         if resolved in seen:
             continue
         seen.add(resolved)
-        if resolved.exists() and resolved.is_dir():
-            existing.append(resolved)
-    return existing
+        search_dirs.append(resolved)
+    return search_dirs
+
+
+def get_existing_sample_pdf_dirs() -> list[Path]:
+    return [d for d in get_sample_pdf_search_dirs() if d.exists() and d.is_dir()]
 
 app.add_middleware(
     CORSMiddleware,
@@ -122,7 +126,7 @@ async def extract(file: UploadFile = File(..., description="Freight invoice PDF"
 
 @app.get("/sample-pdfs")
 def sample_pdfs():
-    sample_dirs = get_sample_pdf_dirs()
+    sample_dirs = get_existing_sample_pdf_dirs()
     files_set = set()
     for sample_dir in sample_dirs:
         for f in sample_dir.iterdir():
@@ -139,9 +143,8 @@ def extract_sample(filename: str):
         raise HTTPException(status_code=400, detail="Invalid sample PDF filename.")
 
     pdf_path = None
-    searched_dirs = []
-    for sample_dir in get_sample_pdf_dirs():
-        searched_dirs.append(str(sample_dir))
+    searched_dirs = [str(path) for path in get_sample_pdf_search_dirs()]
+    for sample_dir in get_existing_sample_pdf_dirs():
         candidate = sample_dir / safe_name
         if candidate.exists() and candidate.is_file():
             pdf_path = candidate
