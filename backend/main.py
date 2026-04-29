@@ -38,9 +38,14 @@ logger = logging.getLogger("uvicorn.error")
 
 def get_sample_pdf_search_dirs() -> list[Path]:
     # Build resilient search paths so sample PDFs work regardless of launch cwd.
-    raw_candidates = [BASE_DIR.parent / "pdfs", Path.cwd() / "pdfs"]
+    raw_candidates = [BASE_DIR.parent / "pdfs", BASE_DIR / "pdfs", Path.cwd() / "pdfs"]
+    env_pdf_dir = os.getenv("SAMPLE_PDF_DIR")
+    if env_pdf_dir:
+        raw_candidates.insert(0, Path(env_pdf_dir))
     raw_candidates.extend(parent / "pdfs" for parent in BASE_DIR.parents)
     raw_candidates.extend(parent / "pdfs" for parent in Path.cwd().parents)
+    # Common container layouts
+    raw_candidates.extend([Path("/app/pdfs"), Path("/app/backend/pdfs"), Path("/pdfs")])
 
     search_dirs = []
     seen = set()
