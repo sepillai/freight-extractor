@@ -1,4 +1,3 @@
-# 1. One-sentence description
 Freight Extractor ingests freight invoice PDFs and returns structured JSON (parties, line items, totals, and dates) with field-level confidence labels and an automatic `needs_review` flag.
 
 ## 3. Why this is hard
