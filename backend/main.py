@@ -1,9 +1,31 @@
 import json
 import logging
+import os
 from pathlib import Path
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+
+BASE_DIR = Path(__file__).resolve().parent
+
+
+def load_env_file(env_path: Path) -> None:
+    if not env_path.exists() or not env_path.is_file():
+        return
+
+    for line in env_path.read_text().splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#") or "=" not in stripped:
+            continue
+        key, value = stripped.split("=", 1)
+        key = key.strip()
+        value = value.strip().strip("'").strip('"')
+        if key and key not in os.environ:
+            os.environ[key] = value
+
+
+load_env_file(BASE_DIR / ".env")
+load_env_file(BASE_DIR.parent / ".env")
 
 try:
     from extractor import extract_invoice_data
@@ -12,8 +34,23 @@ except ModuleNotFoundError:
 
 app = FastAPI()
 logger = logging.getLogger("uvicorn.error")
-BASE_DIR = Path(__file__).resolve().parent
-SAMPLE_PDF_DIR = BASE_DIR.parent / "pdfs"
+SAMPLE_PDF_DIR_CANDIDATES = [
+    BASE_DIR.parent / "pdfs",
+    Path.cwd() / "pdfs",
+]
+
+
+def get_sample_pdf_dirs() -> list[Path]:
+    existing = []
+    seen = set()
+    for candidate in SAMPLE_PDF_DIR_CANDIDATES:
+        resolved = candidate.resolve()
+        if resolved in seen:
+            continue
+        seen.add(resolved)
+        if resolved.exists() and resolved.is_dir():
+            existing.append(resolved)
+    return existing
 
 app.add_middleware(
     CORSMiddleware,
@@ -85,10 +122,13 @@ async def extract(file: UploadFile = File(..., description="Freight invoice PDF"
 
 @app.get("/sample-pdfs")
 def sample_pdfs():
-    if not SAMPLE_PDF_DIR.exists():
-        return {"files": []}
-
-    files = sorted([f.name for f in SAMPLE_PDF_DIR.iterdir() if f.is_file() and f.suffix.lower() == ".pdf"])
+    sample_dirs = get_sample_pdf_dirs()
+    files_set = set()
+    for sample_dir in sample_dirs:
+        for f in sample_dir.iterdir():
+            if f.is_file() and f.suffix.lower() == ".pdf":
+                files_set.add(f.name)
+    files = sorted(files_set)
     return {"files": files}
 
 
@@ -98,9 +138,20 @@ def extract_sample(filename: str):
     if safe_name != filename or not safe_name.lower().endswith(".pdf"):
         raise HTTPException(status_code=400, detail="Invalid sample PDF filename.")
 
-    pdf_path = SAMPLE_PDF_DIR / safe_name
-    if not pdf_path.exists() or not pdf_path.is_file():
-        raise HTTPException(status_code=404, detail="Sample PDF not found.")
+    pdf_path = None
+    searched_dirs = []
+    for sample_dir in get_sample_pdf_dirs():
+        searched_dirs.append(str(sample_dir))
+        candidate = sample_dir / safe_name
+        if candidate.exists() and candidate.is_file():
+            pdf_path = candidate
+            break
+
+    if pdf_path is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Sample PDF not found. Searched: {searched_dirs}",
+        )
 
     try:
         pdf_bytes = pdf_path.read_bytes()
