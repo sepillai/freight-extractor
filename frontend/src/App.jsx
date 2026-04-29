@@ -2,7 +2,7 @@ import { useRef, useState } from "react"
 
 export default function App() {
   const fileInputRef = useRef(null)
-  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000"
+  const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000"
 
   const [result, setResult] = useState(null)
   const [loading, setLoading] = useState(false)
@@ -53,7 +53,7 @@ export default function App() {
     formData.append("file", file)
 
     try {
-      const res = await fetch(`${apiBaseUrl}/extract`, {
+      const res = await fetch(`${API_URL}/extract`, {
         method: "POST",
         body: formData,
       })
