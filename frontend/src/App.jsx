@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 
 export default function App() {
+  const FALLBACK_SAMPLE_PDFS = ["invoice1.pdf", "invoice2.pdf", "invoice3.pdf"]
   const fileInputRef = useRef(null)
   const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000"
 
@@ -28,8 +29,8 @@ export default function App() {
   ]
 
   const getConfidenceClass = (confidence) => {
-    if (confidence === "high") return "bg-[#fff3d2] text-[#7a5600] border-[#fdbb21]"
-    if (confidence === "medium") return "bg-[#fff8e8] text-[#8a6b13] border-[#f7d67a]"
+    if (confidence === "high") return "bg-[#fdbb21] text-[#3b2a00] border-[#fdbb21]"
+    if (confidence === "medium") return "bg-[#ffe09a] text-[#5a4100] border-[#fdbb21]"
     return "bg-[#fff1eb] text-[#9d4a2c] border-[#f2c9b9]"
   }
 
@@ -122,9 +123,10 @@ export default function App() {
         const res = await fetch(`${API_URL}/sample-pdfs`)
         const json = await res.json()
         if (!res.ok) throw new Error(json.detail || "Failed to load sample PDFs.")
-        setSamplePdfs(Array.isArray(json.files) ? json.files : [])
+        const files = Array.isArray(json.files) ? json.files : []
+        setSamplePdfs(files.length > 0 ? files : FALLBACK_SAMPLE_PDFS)
       } catch {
-        setSamplePdfs([])
+        setSamplePdfs(FALLBACK_SAMPLE_PDFS)
       } finally {
         setLoadingSamples(false)
       }
@@ -144,8 +146,6 @@ export default function App() {
           <div className="mt-4 space-y-2">
             {loadingSamples ? (
               <p className="text-sm text-[#6b675d]">Loading sample PDFs...</p>
-            ) : samplePdfs.length === 0 ? (
-              <p className="text-sm text-[#6b675d]">No sample PDFs found in the `pdfs` folder yet.</p>
             ) : (
               samplePdfs.slice(0, 3).map((sample) => (
                 <button
@@ -153,7 +153,7 @@ export default function App() {
                   type="button"
                   onClick={() => extractFromSample(sample)}
                   disabled={loading}
-                  className="w-full rounded-lg border border-[#fdbb21] bg-[#fff5dc] px-3 py-2 text-left text-sm font-medium text-[#6b4d00] transition hover:bg-[#ffe8b6] disabled:cursor-not-allowed disabled:opacity-60"
+                  className="w-full rounded-lg border border-[#fdbb21] bg-[#fdbb21] px-3 py-2 text-left text-sm font-semibold text-[#2e2200] transition hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {sample}
                 </button>
@@ -191,8 +191,8 @@ export default function App() {
           disabled={loading}
           className={`mt-8 flex w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed px-6 py-12 text-center transition ${
             isDragActive
-              ? "border-[#fdbb21] bg-[#fff3d2]"
-              : "border-[#d6cfba] bg-[#f8f4e8] hover:border-[#fdbb21] hover:bg-[#fff5dc]"
+              ? "border-[#fdbb21] bg-[#ffe3a4]"
+              : "border-[#d6cfba] bg-[#f8f4e8] hover:border-[#fdbb21] hover:bg-[#ffeab8]"
           } ${loading ? "cursor-not-allowed opacity-70" : "cursor-pointer shadow-sm hover:shadow"}`}
         >
           <p className="text-lg font-semibold text-[#262523]">
@@ -204,8 +204,8 @@ export default function App() {
         </button>
 
         {loading && (
-          <div className="mt-4 flex items-center gap-3 rounded-lg border border-[#fdbb21] bg-[#fff6e3] px-4 py-3 text-[#7c5c0a]">
-            <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#f3d486] border-t-[#fdbb21]" />
+          <div className="mt-4 flex items-center gap-3 rounded-lg border border-[#fdbb21] bg-[#ffe9bd] px-4 py-3 text-[#5c4100]">
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#e4bb59] border-t-[#8a6200]" />
             <span>Parsing the invoice and extracting fields. This can take a few seconds.</span>
           </div>
         )}
@@ -220,7 +220,7 @@ export default function App() {
       {result && (
         <div className="mx-auto mt-10 w-full max-w-4xl">
           {result.needs_review && (
-            <div className="mb-5 rounded-lg border border-[#fdbb21] bg-[#fff2cf] px-4 py-3 text-[#6f4f00]">
+            <div className="mb-5 rounded-lg border border-[#fdbb21] bg-[#ffe5aa] px-4 py-3 text-[#5c4100]">
               <p className="font-semibold">Manual review recommended</p>
               <p className="text-sm">
                 One or more fields were extracted with low confidence. Please verify highlighted values.
@@ -229,7 +229,7 @@ export default function App() {
           )}
 
           <div className="rounded-2xl border border-[#ddd4bc] bg-[#f8f4e8] p-4 shadow-sm sm:p-5">
-            <div className="mb-4 rounded-lg border border-[#f4dfa4] bg-[#fff9ea] px-3 py-2 text-xs text-[#6d6756]">
+            <div className="mb-4 rounded-lg border border-[#fdbb21] bg-[#ffeec6] px-3 py-2 text-xs text-[#6d6756]">
               Confidence guide: <span className="font-semibold text-[#7a5600]">High</span> is usually accurate,
               <span className="font-semibold text-[#89630c]"> Medium</span> should be checked, and
               <span className="font-semibold text-[#9d4a2c]"> Low</span> likely needs manual review.
