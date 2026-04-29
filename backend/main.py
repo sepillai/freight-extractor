@@ -1,13 +1,19 @@
 import json
 import logging
+from pathlib import Path
 
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 
-from extractor import extract_invoice_data
+try:
+    from extractor import extract_invoice_data
+except ModuleNotFoundError:
+    from backend.extractor import extract_invoice_data
 
 app = FastAPI()
 logger = logging.getLogger("uvicorn.error")
+BASE_DIR = Path(__file__).resolve().parent
+SAMPLE_PDF_DIR = BASE_DIR.parent / "pdfs"
 
 app.add_middleware(
     CORSMiddleware,
@@ -71,6 +77,50 @@ async def extract(file: UploadFile = File(..., description="Freight invoice PDF"
         ) from e
     except Exception as e:
         logger.exception("Unexpected extraction error")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Extraction failed: {e!s}",
+        ) from e
+
+
+@app.get("/sample-pdfs")
+def sample_pdfs():
+    if not SAMPLE_PDF_DIR.exists():
+        return {"files": []}
+
+    files = sorted([f.name for f in SAMPLE_PDF_DIR.iterdir() if f.is_file() and f.suffix.lower() == ".pdf"])
+    return {"files": files}
+
+
+@app.post("/extract-sample/{filename}")
+def extract_sample(filename: str):
+    safe_name = Path(filename).name
+    if safe_name != filename or not safe_name.lower().endswith(".pdf"):
+        raise HTTPException(status_code=400, detail="Invalid sample PDF filename.")
+
+    pdf_path = SAMPLE_PDF_DIR / safe_name
+    if not pdf_path.exists() or not pdf_path.is_file():
+        raise HTTPException(status_code=404, detail="Sample PDF not found.")
+
+    try:
+        pdf_bytes = pdf_path.read_bytes()
+        result = extract_invoice_data(pdf_bytes)
+        return {"success": True, "data": result, "sample_file": safe_name}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except json.JSONDecodeError:
+        raise HTTPException(
+            status_code=502,
+            detail="Extraction failed: model returned invalid JSON.",
+        )
+    except RuntimeError as e:
+        logger.exception("Sample extraction runtime error")
+        raise HTTPException(
+            status_code=500,
+            detail=f"Extraction failed: {e!s}",
+        ) from e
+    except Exception as e:
+        logger.exception("Unexpected sample extraction error")
         raise HTTPException(
             status_code=500,
             detail=f"Extraction failed: {e!s}",

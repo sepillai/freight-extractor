@@ -1,4 +1,4 @@
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
 export default function App() {
   const fileInputRef = useRef(null)
@@ -9,6 +9,8 @@ export default function App() {
   const [error, setError] = useState(null)
   const [isDragActive, setIsDragActive] = useState(false)
   const [fileName, setFileName] = useState("")
+  const [samplePdfs, setSamplePdfs] = useState([])
+  const [loadingSamples, setLoadingSamples] = useState(true)
 
   const fieldConfig = [
     { key: "invoice_number", label: "Invoice Number" },
@@ -26,8 +28,8 @@ export default function App() {
   ]
 
   const getConfidenceClass = (confidence) => {
-    if (confidence === "high") return "bg-[#fff3c7] text-[#7a5600] border-[#f6d770]"
-    if (confidence === "medium") return "bg-[#fff8de] text-[#89630c] border-[#f2df98]"
+    if (confidence === "high") return "bg-[#fff3d2] text-[#7a5600] border-[#fdbb21]"
+    if (confidence === "medium") return "bg-[#fff8e8] text-[#8a6b13] border-[#f7d67a]"
     return "bg-[#fff1eb] text-[#9d4a2c] border-[#f2c9b9]"
   }
 
@@ -73,6 +75,28 @@ export default function App() {
     }
   }
 
+  const extractFromSample = async (sampleName) => {
+    if (!sampleName) return
+
+    setLoading(true)
+    setError(null)
+    setResult(null)
+    setFileName(sampleName)
+
+    try {
+      const res = await fetch(`${API_URL}/extract-sample/${encodeURIComponent(sampleName)}`, {
+        method: "POST",
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.detail || "Sample extraction failed.")
+      setResult(json.data)
+    } catch (err) {
+      setError(err.message || "Something went wrong while extracting the sample PDF.")
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const handleFileSelect = (e) => extractFromFile(e.target.files?.[0])
   const handleDragOver = (e) => {
     e.preventDefault()
@@ -91,8 +115,54 @@ export default function App() {
 
   const lineItems = Array.isArray(result?.line_items) ? result.line_items : []
 
+  useEffect(() => {
+    const loadSamples = async () => {
+      setLoadingSamples(true)
+      try {
+        const res = await fetch(`${API_URL}/sample-pdfs`)
+        const json = await res.json()
+        if (!res.ok) throw new Error(json.detail || "Failed to load sample PDFs.")
+        setSamplePdfs(Array.isArray(json.files) ? json.files : [])
+      } catch {
+        setSamplePdfs([])
+      } finally {
+        setLoadingSamples(false)
+      }
+    }
+
+    loadSamples()
+  }, [API_URL])
+
   return (
     <div className="min-h-screen bg-[#f4f0e6] px-4 py-8 text-[#1f1f1f]">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6 lg:flex-row">
+        <aside className="w-full rounded-2xl border border-[#ddd4bc] bg-[#f8f4e8] p-4 shadow-sm lg:sticky lg:top-6 lg:h-fit lg:max-w-xs">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-[#6a6456]">Sample PDFs</h2>
+          <p className="mt-2 text-sm text-[#605c52]">
+            Try these invoice examples without uploading your own file.
+          </p>
+          <div className="mt-4 space-y-2">
+            {loadingSamples ? (
+              <p className="text-sm text-[#6b675d]">Loading sample PDFs...</p>
+            ) : samplePdfs.length === 0 ? (
+              <p className="text-sm text-[#6b675d]">No sample PDFs found in the `pdfs` folder yet.</p>
+            ) : (
+              samplePdfs.slice(0, 3).map((sample) => (
+                <button
+                  key={sample}
+                  type="button"
+                  onClick={() => extractFromSample(sample)}
+                  disabled={loading}
+                  className="w-full rounded-lg border border-[#fdbb21] bg-[#fff5dc] px-3 py-2 text-left text-sm font-medium text-[#6b4d00] transition hover:bg-[#ffe8b6] disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {sample}
+                </button>
+              ))
+            )}
+          </div>
+        </aside>
+
+        <main className="min-w-0 flex-1">
       <div className="mx-auto w-full max-w-4xl">
         <div className="inline-flex rounded-md border border-[#d8d1bd] bg-[#efe9d7] px-3 py-1 text-xs font-semibold uppercase tracking-wide text-[#5f5a4b]">
           Freight AI
@@ -121,8 +191,8 @@ export default function App() {
           disabled={loading}
           className={`mt-8 flex w-full flex-col items-center justify-center rounded-2xl border-2 border-dashed px-6 py-12 text-center transition ${
             isDragActive
-              ? "border-[#f4c430] bg-[#fff5d6]"
-              : "border-[#d6cfba] bg-[#f8f4e8] hover:border-[#e3bd3c] hover:bg-[#fff6da]"
+              ? "border-[#fdbb21] bg-[#fff3d2]"
+              : "border-[#d6cfba] bg-[#f8f4e8] hover:border-[#fdbb21] hover:bg-[#fff5dc]"
           } ${loading ? "cursor-not-allowed opacity-70" : "cursor-pointer shadow-sm hover:shadow"}`}
         >
           <p className="text-lg font-semibold text-[#262523]">
@@ -134,8 +204,8 @@ export default function App() {
         </button>
 
         {loading && (
-          <div className="mt-4 flex items-center gap-3 rounded-lg border border-[#f2dc92] bg-[#fff6dc] px-4 py-3 text-[#7c5c0a]">
-            <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#f2dc92] border-t-[#c69100]" />
+          <div className="mt-4 flex items-center gap-3 rounded-lg border border-[#fdbb21] bg-[#fff6e3] px-4 py-3 text-[#7c5c0a]">
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#f3d486] border-t-[#fdbb21]" />
             <span>Parsing the invoice and extracting fields. This can take a few seconds.</span>
           </div>
         )}
@@ -150,7 +220,7 @@ export default function App() {
       {result && (
         <div className="mx-auto mt-10 w-full max-w-4xl">
           {result.needs_review && (
-            <div className="mb-5 rounded-lg border border-[#e5c86e] bg-[#fff2c9] px-4 py-3 text-[#6f4f00]">
+            <div className="mb-5 rounded-lg border border-[#fdbb21] bg-[#fff2cf] px-4 py-3 text-[#6f4f00]">
               <p className="font-semibold">Manual review recommended</p>
               <p className="text-sm">
                 One or more fields were extracted with low confidence. Please verify highlighted values.
@@ -159,7 +229,7 @@ export default function App() {
           )}
 
           <div className="rounded-2xl border border-[#ddd4bc] bg-[#f8f4e8] p-4 shadow-sm sm:p-5">
-            <div className="mb-4 rounded-lg border border-[#eadfbf] bg-[#fff8e6] px-3 py-2 text-xs text-[#6d6756]">
+            <div className="mb-4 rounded-lg border border-[#f4dfa4] bg-[#fff9ea] px-3 py-2 text-xs text-[#6d6756]">
               Confidence guide: <span className="font-semibold text-[#7a5600]">High</span> is usually accurate,
               <span className="font-semibold text-[#89630c]"> Medium</span> should be checked, and
               <span className="font-semibold text-[#9d4a2c]"> Low</span> likely needs manual review.
@@ -242,6 +312,8 @@ export default function App() {
           </details>
         </div>
       )}
+        </main>
+      </div>
     </div>
   )
 }

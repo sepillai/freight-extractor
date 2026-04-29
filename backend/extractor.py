@@ -4,7 +4,10 @@ import json
 import io
 import os
 
-from extraction_prompt import SYSTEM_PROMPT, USER_PROMPT
+try:
+    from extraction_prompt import SYSTEM_PROMPT, USER_PROMPT
+except ModuleNotFoundError:
+    from backend.extraction_prompt import SYSTEM_PROMPT, USER_PROMPT
 
 client = anthropic.Anthropic()
 
